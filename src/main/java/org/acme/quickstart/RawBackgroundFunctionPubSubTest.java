@@ -16,7 +16,9 @@ import jakarta.inject.Named;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Date;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 @Named("rawPubSubTest")
 @ApplicationScoped
@@ -55,6 +57,14 @@ public class RawBackgroundFunctionPubSubTest implements RawBackgroundFunction {
 
     private void saveOrderToFirestore(Order order) {
         try {
+            // Définir les dates avant d'enregistrer dans Firestore
+            order.orderDate = new Date(); // Date actuelle
+            if(order.product == "Casque Audio Pro") {
+                order.deliveryDate = new Date(order.orderDate.getTime() + TimeUnit.DAYS.toMillis(12)); // +12 jours
+            } else {
+                order.deliveryDate = new Date(order.orderDate.getTime() + TimeUnit.DAYS.toMillis(5)); // +5 jours
+            }
+
             WriteResult result = firestore.collection("orders")
                     .document(order.name + "_" + System.currentTimeMillis()) // Nom unique du document
                     .set(order)
