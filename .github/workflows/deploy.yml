@@ -1,0 +1,46 @@
+name: deploy quarkus back app
+
+env:
+  SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+  PROJECT_ID: ${{ vars.PROJECT_ID }}
+  SUBSCRIBED_TOPIC: ${{ vars.SUBSCRIBED_TOPIC }}
+  REGION: ${{ vars.REGION }}
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          version: "latest"
+
+      - name: Set Google Cloud Project
+        run: gcloud config set project $PROJECT_ID
+
+      - name: Build uber jar
+        run: ./mvnw package
+
+      - name: Deploy to Cloud Functions
+        run: |
+          gcloud functions deploy $SERVICE_NAME \
+            --entry-point=io.quarkus.gcp.functions.QuarkusBackgroundFunction \
+            --runtime=java21 \
+            --trigger-resource $SUBSCRIBED_TOPIC \
+            --trigger-event google.pubsub.topic.publish \
+            --source=target/deployment \
+            --region=$REGION
